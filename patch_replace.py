@@ -1,0 +1,80 @@
+import re
+
+with open("src/components/views/JadwalView.tsx", "r") as f:
+    content = f.read()
+
+pattern = re.compile(
+    r'\{taskSubmissions\.filter\(ts => ts\.eventId === selectedEventForVerify\.id && \(verifyFilter === \'belum\' \? \(ts\.status === \'Belum Diverifikasi\' \|\| ts\.status === \'Ditolak\'\) : ts\.status === \'Terverifikasi\'\)\)\.length === 0 \? \(\s*<div className="py-8 flex flex-col items-center justify-center text-center">\s*<ClipboardCheck className=\{`w-12 h-12 mb-3 \$\{isDark \? \'text-slate-700\' : \'text-slate-200\'\}`\} />\s*<p className=\{`text-sm font-bold \$\{isDark \? \'text-slate-300\' : \'text-slate-600\'\}`\}>Tidak ada data</p>\s*<p className=\{`text-xs \$\{isDark \? \'text-slate-500\' : \'text-slate-400\'\}`\}>Belum ada tugas di kategori ini\.</p>\s*</div>\s*\) : \(\s*taskSubmissions\.filter\(ts => ts\.eventId === selectedEventForVerify\.id && \(verifyFilter === \'belum\' \? \(ts\.status === \'Belum Diverifikasi\' \|\| ts\.status === \'Ditolak\'\) : ts\.status === \'Terverifikasi\'\)\)\.map\(ts => \(',
+    re.MULTILINE
+)
+
+replacement = """{(() => {
+                  if (verifyFilter === 'tidak') {
+                    const nonUploaders = activeTeachers.filter(t => {
+                      const latestSubmission = taskSubmissions.find(ts => ts.eventId === selectedEventForVerify.id && ts.teacherId === t.id);
+                      return !latestSubmission || latestSubmission.status === 'Ditolak';
+                    });
+                    
+                    if (nonUploaders.length === 0) {
+                      return (
+                        <div className="py-8 flex flex-col items-center justify-center text-center">
+                          <ClipboardCheck className={`w-12 h-12 mb-3 ${isDark ? 'text-slate-700' : 'text-slate-200'}`} />
+                          <p className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Semua Mengupload</p>
+                          <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Semua guru telah mengupload tugas.</p>
+                        </div>
+                      );
+                    }
+
+                    return nonUploaders.map(t => {
+                      const latestSubmission = taskSubmissions.find(ts => ts.eventId === selectedEventForVerify.id && ts.teacherId === t.id);
+                      return (
+                        <div key={t.id} className={`flex items-center justify-between p-3.5 rounded-2xl border ${isDark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-200'}`}>
+                          <div className="flex flex-col gap-0.5">
+                            <span className={`text-sm font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>{t.name}</span>
+                            <div className="flex items-center gap-2 text-[10px]">
+                              <span className={`${isDark ? 'text-slate-400' : 'text-slate-500'}`}>{t.school || '-'}</span>
+                              <span className={`${isDark ? 'text-slate-600' : 'text-slate-300'}`}>•</span>
+                              <span className={`${isDark ? 'text-slate-400' : 'text-slate-500'} truncate max-w-[150px]`}>
+                                {latestSubmission?.status === 'Ditolak' ? 'Tugas Ditolak' : 'Belum Upload'}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold ${isDark ? 'bg-rose-500/20 text-rose-400' : 'bg-rose-100 text-rose-700'}`}>
+                              {latestSubmission?.status === 'Ditolak' ? 'Tugas Ditolak' : 'Belum Upload'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    });
+                  }
+                  
+                  const filteredSubmissions = taskSubmissions.filter(ts => ts.eventId === selectedEventForVerify.id && (verifyFilter === 'belum' ? (ts.status === 'Belum Diverifikasi' || ts.status === 'Ditolak') : ts.status === 'Terverifikasi'));
+                  
+                  if (filteredSubmissions.length === 0) {
+                    return (
+                      <div className="py-8 flex flex-col items-center justify-center text-center">
+                        <ClipboardCheck className={`w-12 h-12 mb-3 ${isDark ? 'text-slate-700' : 'text-slate-200'}`} />
+                        <p className={`text-sm font-bold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Tidak ada data</p>
+                        <p className={`text-xs ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>Belum ada tugas di kategori ini.</p>
+                      </div>
+                    );
+                  }
+                  
+                  return filteredSubmissions.map(ts => ("""
+
+new_content = pattern.sub(replacement, content)
+
+# now replace `)) \n )}` at the end of the div
+new_content2 = re.sub(
+    r'\)\)\s*\)\}\s*</div>\s*</div>\s*<div className=\{`pt-4 border-t',
+    r'))\n                })()}\n              </div>\n            </div>\n            <div className={`pt-4 border-t',
+    new_content
+)
+
+with open("src/components/views/JadwalView.tsx", "w") as f:
+    f.write(new_content2)
+
+print(content != new_content)
+print(new_content != new_content2)

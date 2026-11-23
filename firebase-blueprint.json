@@ -1,0 +1,235 @@
+{
+  "entities": {
+    "KombelDataCollection": {
+      "title": "KombelDataCollection",
+      "description": "Legacy compatibility container storing organizational collection arrays synchronized with localStorage",
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "description": "List of records for the specific module collection"
+        }
+      },
+      "required": ["data"]
+    },
+    "GlobalSettings": {
+      "title": "GlobalSettings",
+      "description": "Organizational configuration including logo, signatures, stamp, bank account, schools, and letterhead defaults",
+      "type": "object",
+      "properties": {
+        "logo-pgri": { "type": "string", "maxLength": 700000 },
+        "logo-stempel": { "type": "string", "maxLength": 700000 },
+        "ttd-ketua": { "type": "string", "maxLength": 700000 },
+        "ttd-sekretaris": { "type": "string", "maxLength": 700000 },
+        "ttd-bendahara": { "type": "string", "maxLength": 700000 },
+        "ttd-pengawas": { "type": "string", "maxLength": 700000 },
+        "org-config": { "type": "string", "maxLength": 20000 },
+        "pgri-verified-pengurus-names": { "type": "string", "maxLength": 20000 },
+        "kombel-undangan-npa": { "type": "string", "maxLength": 2000 }
+      }
+    },
+    "SyncVersions": {
+      "title": "SyncVersions",
+      "description": "Lightweight per-module update timestamps for quota-efficient client cache invalidation",
+      "type": "object",
+      "properties": {
+        "teachers": { "type": "number" },
+        "events": { "type": "number" },
+        "attendanceList": { "type": "number" },
+        "financialTransactions": { "type": "number" },
+        "cashPayments": { "type": "number" },
+        "taskSubmissions": { "type": "number" },
+        "materials": { "type": "number" },
+        "announcements": { "type": "number" },
+        "forumPosts": { "type": "number" },
+        "webinars": { "type": "number" },
+        "invitations": { "type": "number" },
+        "suratAgenda": { "type": "number" },
+        "notulen": { "type": "number" },
+        "proker_items": { "type": "number" },
+        "dana_sosial": { "type": "number" },
+        "aspirasi_items": { "type": "number" },
+        "kontakFeedback": { "type": "number" },
+        "settings": { "type": "number" }
+      }
+    },
+    "PengurusRoleAssignment": {
+      "title": "PengurusRoleAssignment",
+      "description": "Role-based access control assignment for PGRI Ranting officials",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email", "maxLength": 160 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "role": { "type": "string", "enum": ["ketua", "sekretaris", "bendahara", "seksi", "guru"] },
+        "positionLabel": { "type": "string", "maxLength": 120 },
+        "assignedBy": { "type": "string", "maxLength": 160 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["email", "name", "role", "updatedAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable activity audit trail for sensitive organizational actions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "actorUid": { "type": "string", "maxLength": 128 },
+        "actorEmail": { "type": "string", "maxLength": 160 },
+        "actorName": { "type": "string", "maxLength": 120 },
+        "actorRole": { "type": "string", "maxLength": 40 },
+        "module": { "type": "string", "maxLength": 64 },
+        "action": { "type": "string", "maxLength": 64 },
+        "summary": { "type": "string", "maxLength": 500 },
+        "timestamp": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "actorUid", "actorEmail", "actorName", "actorRole", "module", "action", "summary", "timestamp"]
+    },
+    "AttendanceDoc": {
+      "title": "AttendanceDoc",
+      "description": "Scalable per-document attendance record to support concurrent QR scanning without 1MB document contention",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "eventId": { "type": "string", "maxLength": 128 },
+        "eventTitle": { "type": "string", "maxLength": 240 },
+        "teacherId": { "type": "string", "maxLength": 128 },
+        "teacherName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "school": { "type": "string", "maxLength": 160 },
+        "status": { "type": "string", "enum": ["Hadir", "Izin", "Sakit", "Tugas Luar", "Verifikasi", "Alpha"] },
+        "timestamp": { "type": "string", "maxLength": 64 },
+        "notes": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "eventId", "eventTitle", "teacherName", "school", "status", "timestamp"]
+    },
+    "TransactionDoc": {
+      "title": "TransactionDoc",
+      "description": "Scalable per-document financial transaction record with budget category and optional receipt",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "date": { "type": "string", "maxLength": 32 },
+        "type": { "type": "string", "enum": ["Pemasukan", "Pengeluaran"] },
+        "amount": { "type": "number" },
+        "category": { "type": "string", "maxLength": 80 },
+        "description": { "type": "string", "minLength": 1, "maxLength": 400 },
+        "receiptImage": { "type": "string", "maxLength": 350000 }
+      },
+      "required": ["id", "date", "type", "amount", "description"]
+    },
+    "ProkerItem": {
+      "title": "ProkerItem",
+      "description": "Annual work program item per PGRI Ranting division/seksi",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "seksi": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "penanggungJawab": { "type": "string", "maxLength": 120 },
+        "periode": { "type": "string", "maxLength": 64 },
+        "targetDate": { "type": "string", "maxLength": 64 },
+        "budget": { "type": "number" },
+        "status": { "type": "string", "enum": ["Direncanakan", "Berjalan", "Terlaksana"] },
+        "progress": { "type": "number" },
+        "description": { "type": "string", "maxLength": 1000 },
+        "documentationUrl": { "type": "string", "maxLength": 500 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "title", "seksi", "status", "progress", "updatedAt"]
+    },
+    "DanaSosialItem": {
+      "title": "DanaSosialItem",
+      "description": "Solidarity fund and member welfare assistance record (sick, bereavement, retirement, celebration)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "type": { "type": "string", "enum": ["Penggalangan", "Penyaluran"] },
+        "category": { "type": "string", "enum": ["Sakit / Rawat Inap", "Duka Cita", "Purna Tugas / Pensiun", "Pernikahan / Kelahiran", "Bencana / Lainnya"] },
+        "recipientName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "recipientSchool": { "type": "string", "maxLength": 160 },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "maxLength": 32 },
+        "notes": { "type": "string", "maxLength": 600 },
+        "status": { "type": "string", "enum": ["Terkumpul", "Tersalurkan", "Proses"] }
+      },
+      "required": ["id", "type", "category", "recipientName", "amount", "date", "status"]
+    },
+    "AspirasiItem": {
+      "title": "AspirasiItem",
+      "description": "Confidential member aspiration, feedback, or LKBH advocacy request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "authorUid": { "type": "string", "maxLength": 128 },
+        "senderName": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "senderSchool": { "type": "string", "maxLength": 140 },
+        "senderPhone": { "type": "string", "maxLength": 40 },
+        "isAnonymous": { "type": "boolean" },
+        "category": { "type": "string", "enum": ["Aspirasi Organisasi", "Advokasi / LKBH", "Administrasi PPPK/PNS", "Kesejahteraan & Tunjangan", "Lainnya"] },
+        "subject": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "message": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "status": { "type": "string", "enum": ["Diterima", "Ditindaklanjuti", "Selesai"] },
+        "response": { "type": "string", "maxLength": 1500 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "authorUid", "senderName", "category", "subject", "message", "status", "createdAt"]
+    },
+    "SuratAgendaItem": {
+      "title": "SuratAgendaItem",
+      "description": "Incoming and outgoing official correspondence logbook entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "direction": { "type": "string", "enum": ["Masuk", "Keluar"] },
+        "nomorSurat": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "tanggalSurat": { "type": "string", "maxLength": 32 },
+        "asalTujuan": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "perihal": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "lampiranUrl": { "type": "string", "maxLength": 600 },
+        "catatan": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "direction", "nomorSurat", "tanggalSurat", "asalTujuan", "perihal"]
+    }
+  },
+  "firestore": {
+    "/kombel_data/{collectionId}": {
+      "schema": { "$ref": "#/entities/KombelDataCollection" },
+      "description": "Existing collection arrays synced across views"
+    },
+    "/settings/{docId}": {
+      "schema": { "$ref": "#/entities/GlobalSettings" },
+      "description": "Global PGRI Ranting visual assets, locked menus, organizational config, and lightweight version manifest (versions)"
+    },
+    "/pengurus_roles/{emailKey}": {
+      "schema": { "$ref": "#/entities/PengurusRoleAssignment" },
+      "description": "RBAC role assignments managed by Ketua / Super Admin"
+    },
+    "/audit_logs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Immutable activity logs for sensitive organizational mutations"
+    },
+    "/attendance_docs/{recordId}": {
+      "schema": { "$ref": "#/entities/AttendanceDoc" },
+      "description": "Per-document attendance records for scalable concurrent check-in"
+    },
+    "/transaction_docs/{txId}": {
+      "schema": { "$ref": "#/entities/TransactionDoc" },
+      "description": "Per-document financial transactions with category and receipts"
+    },
+    "/proker_items/{prokerId}": {
+      "schema": { "$ref": "#/entities/ProkerItem" },
+      "description": "Annual work program items per PGRI division"
+    },
+    "/dana_sosial/{itemId}": {
+      "schema": { "$ref": "#/entities/DanaSosialItem" },
+      "description": "Solidarity fund and member welfare assistance records"
+    },
+    "/aspirasi_items/{aspirasiId}": {
+      "schema": { "$ref": "#/entities/AspirasiItem" },
+      "description": "Confidential member aspirations and LKBH advocacy requests"
+    },
+    "/surat_agenda/{suratId}": {
+      "schema": { "$ref": "#/entities/SuratAgendaItem" },
+      "description": "Incoming and outgoing official correspondence logbook"
+    }
+  }
+}

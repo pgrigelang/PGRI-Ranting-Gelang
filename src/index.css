@@ -1,0 +1,140 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Outfit:wght@600;700;800;900&family=JetBrains+Mono:wght@500;600;700&display=swap');
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  .font-sans {
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  .font-display {
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  .font-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-feature-settings: "tnum";
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-[#f7f5f2] dark:bg-stone-950 text-stone-800 dark:text-stone-100;
+  }
+
+  :root {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  button, .btn {
+    transition: background-color 150ms cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 150ms cubic-bezier(0.16, 1, 0.3, 1),
+                color 150ms cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 150ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+}
+
+@layer utilities {
+  /* Motif Anyaman Halus Kusuma Bangsa PGRI */
+  .pgri-batik-pattern {
+    background-image: url("data:image/svg+xml,%3Csvg width='44' height='44' viewBox='0 0 44 44' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23991b1b' stroke-opacity='0.065' stroke-width='1'%3E%3Cpath d='M22 2L42 22L22 42L2 22Z'/%3E%3Cpath d='M22 10L34 22L22 34L10 22Z'/%3E%3Ccircle cx='22' cy='22' r='2.5' fill='%23b45309' fill-opacity='0.09' stroke='none'/%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  .pgri-batik-pattern-dark {
+    background-image: url("data:image/svg+xml,%3Csvg width='44' height='44' viewBox='0 0 44 44' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23f59e0b' stroke-opacity='0.08' stroke-width='1'%3E%3Cpath d='M22 2L42 22L22 42L2 22Z'/%3E%3Cpath d='M22 10L34 22L22 34L10 22Z'/%3E%3Ccircle cx='22' cy='22' r='2.5' fill='%23ef4444' fill-opacity='0.14' stroke='none'/%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  .pgri-top-accent {
+    background-image: linear-gradient(90deg, #991b1b 0%, #b91c1c 48%, #d97706 100%);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-stone-300 rounded-full;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-stone-700;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-stone-400;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-stone-600;
+  }
+}
+
+@layer utilities {
+  @keyframes shineLoop {
+    0% {
+      transform: translateX(200%) skewX(-25deg);
+    }
+    50% {
+      transform: translateX(-200%) skewX(-25deg);
+    }
+    100% {
+      transform: translateX(200%) skewX(-25deg);
+    }
+  }
+  .animate-shine-rtl {
+    animation: shineLoop 5s infinite ease-in-out;
+  }
+}
+
+@layer utilities {
+  @keyframes pulseGrow {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.03);
+    }
+  }
+  .animate-pulse-grow {
+    animation: pulseGrow 2.5s infinite ease-in-out;
+  }
+}
+
+@layer base {
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  input, textarea, [contenteditable] {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+}
+
+html {
+  overflow-y: overlay;
+  scrollbar-gutter: stable;
+}
+
+* {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+[role="button"]:active, button:active, a:active {
+  outline: none;
+}

@@ -1,0 +1,385 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // GLOBAL PRIMITIVES & IDENTITY HELPERS
+    // =========================================================================
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true && request.auth.token.email is string;
+    }
+
+    function emailKey() {
+      return request.auth.token.email.lower().replace('[^a-z0-9]', '_');
+    }
+
+    function isSuperAdmin() {
+      return isVerifiedUser() && request.auth.token.email.lower() == 'adisaifulrizal@gmail.com';
+    }
+
+    function hasRoleDoc() {
+      return isVerifiedUser() && exists(/databases/$(database)/documents/pengurus_roles/$(emailKey()));
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/pengurus_roles/$(emailKey())).data.role;
+    }
+
+    function isKetua() {
+      return isSuperAdmin() || (hasRoleDoc() && getUserRole() == 'ketua');
+    }
+
+    function isSekretaris() {
+      return hasRoleDoc() && getUserRole() == 'sekretaris';
+    }
+
+    function isBendahara() {
+      return hasRoleDoc() && getUserRole() == 'bendahara';
+    }
+
+    function isSeksi() {
+      return hasRoleDoc() && getUserRole() == 'seksi';
+    }
+
+    function isPengurus() {
+      return isSuperAdmin() || (hasRoleDoc() && getUserRole() in ['ketua', 'sekretaris', 'bendahara', 'seksi']);
+    }
+
+    // =========================================================================
+    // VALIDATION BLUEPRINTS
+    // =========================================================================
+    function isValidKombelData(data) {
+      return data.keys().hasAll(['data']) &&
+        data.keys().hasOnly(['data']) &&
+        data.data is list &&
+        data.data.size() <= 2000;
+    }
+
+    function isValidGlobalSettings(data) {
+      return data.keys().hasOnly([
+        'logo-pgri', 'logo-kombel',
+        'ttd-pengawas', 'ttd-pengawas-size',
+        'ttd-ketua', 'ttd-ketua-size',
+        'ttd-sekretaris', 'ttd-sekretaris-size',
+        'ttd-bendahara', 'ttd-bendahara-size',
+        'logo-stempel', 'logo-stempel-size', 'logo-stempel-rotation',
+        'logo-watermark', 'logo-watermark-size', 'logo-watermark-opacity',
+        'kombel-visi', 'kombel-misi', 'kombel-pembina', 'kombel-penanggungjawab', 'kombel-pengurus',
+        'org-config', 'pgri-verified-pengurus-names', 'kombel-undangan-npa'
+      ]);
+    }
+
+    function isValidLockedMenus(data) {
+      return data.keys().hasOnly([
+        'beranda', 'profil', 'anggota', 'materi', 'jadwal', 'keuangan',
+        'galeri', 'dokumen', 'forum', 'undangan', 'webinar', 'sertifikat',
+        'proker', 'sosial', 'pengaturan', 'kontak'
+      ]);
+    }
+
+    function isValidSyncVersions(data) {
+      return data.keys().size() >= 1 &&
+        data.keys().size() <= 18 &&
+        data.keys().hasOnly([
+          'teachers', 'events', 'attendanceList', 'financialTransactions', 'cashPayments',
+          'taskSubmissions', 'materials', 'announcements', 'forumPosts', 'webinars',
+          'invitations', 'suratAgenda', 'notulen', 'proker_items', 'dana_sosial',
+          'aspirasi_items', 'kontakFeedback', 'settings'
+        ]) &&
+        (!('teachers' in data) || (data.teachers is number && data.teachers >= 0)) &&
+        (!('events' in data) || (data.events is number && data.events >= 0)) &&
+        (!('attendanceList' in data) || (data.attendanceList is number && data.attendanceList >= 0)) &&
+        (!('financialTransactions' in data) || (data.financialTransactions is number && data.financialTransactions >= 0)) &&
+        (!('cashPayments' in data) || (data.cashPayments is number && data.cashPayments >= 0)) &&
+        (!('taskSubmissions' in data) || (data.taskSubmissions is number && data.taskSubmissions >= 0)) &&
+        (!('materials' in data) || (data.materials is number && data.materials >= 0)) &&
+        (!('announcements' in data) || (data.announcements is number && data.announcements >= 0)) &&
+        (!('forumPosts' in data) || (data.forumPosts is number && data.forumPosts >= 0)) &&
+        (!('webinars' in data) || (data.webinars is number && data.webinars >= 0)) &&
+        (!('invitations' in data) || (data.invitations is number && data.invitations >= 0)) &&
+        (!('suratAgenda' in data) || (data.suratAgenda is number && data.suratAgenda >= 0)) &&
+        (!('notulen' in data) || (data.notulen is number && data.notulen >= 0)) &&
+        (!('proker_items' in data) || (data.proker_items is number && data.proker_items >= 0)) &&
+        (!('dana_sosial' in data) || (data.dana_sosial is number && data.dana_sosial >= 0)) &&
+        (!('aspirasi_items' in data) || (data.aspirasi_items is number && data.aspirasi_items >= 0)) &&
+        (!('kontakFeedback' in data) || (data.kontakFeedback is number && data.kontakFeedback >= 0)) &&
+        (!('settings' in data) || (data.settings is number && data.settings >= 0));
+    }
+
+    function isValidPengurusRole(data) {
+      return data.keys().hasAll(['email', 'name', 'role', 'updatedAt']) &&
+        data.keys().hasOnly(['email', 'name', 'role', 'positionLabel', 'assignedBy', 'updatedAt']) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+        data.role in ['ketua', 'sekretaris', 'bendahara', 'seksi', 'guru'] &&
+        (!('positionLabel' in data) || (data.positionLabel is string && data.positionLabel.size() <= 120)) &&
+        (!('assignedBy' in data) || (data.assignedBy is string && data.assignedBy.size() <= 160)) &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidAuditLog(data) {
+      return data.keys().hasAll(['id', 'actorUid', 'actorEmail', 'actorName', 'actorRole', 'module', 'action', 'summary', 'timestamp']) &&
+        data.keys().hasOnly(['id', 'actorUid', 'actorEmail', 'actorName', 'actorRole', 'module', 'action', 'summary', 'timestamp']) &&
+        isValidId(data.id) &&
+        data.actorUid is string && data.actorUid == request.auth.uid && data.actorUid.size() <= 128 &&
+        data.actorEmail is string && data.actorEmail.size() <= 160 &&
+        data.actorName is string && data.actorName.size() <= 120 &&
+        data.actorRole is string && data.actorRole.size() <= 40 &&
+        data.module is string && data.module.size() <= 64 &&
+        data.action is string && data.action.size() <= 64 &&
+        data.summary is string && data.summary.size() <= 500 &&
+        data.timestamp is string && data.timestamp.size() <= 64;
+    }
+
+    function isValidAttendanceDoc(data) {
+      return data.keys().hasAll(['id', 'eventId', 'eventTitle', 'teacherName', 'school', 'status', 'timestamp']) &&
+        data.keys().hasOnly(['id', 'eventId', 'eventTitle', 'teacherId', 'teacherName', 'nip', 'school', 'status', 'timestamp', 'notes', 'signature']) &&
+        isValidId(data.id) &&
+        data.eventId is string && data.eventId.size() >= 1 && data.eventId.size() <= 128 &&
+        data.eventTitle is string && data.eventTitle.size() <= 240 &&
+        (!('teacherId' in data) || (data.teacherId is string && data.teacherId.size() <= 128)) &&
+        data.teacherName is string && data.teacherName.size() >= 1 && data.teacherName.size() <= 160 &&
+        (!('nip' in data) || (data.nip is string && data.nip.size() <= 40)) &&
+        data.school is string && data.school.size() <= 160 &&
+        data.status in ['Hadir', 'Izin', 'Sakit', 'Tugas Luar', 'Verifikasi', 'Alpha'] &&
+        data.timestamp is string && data.timestamp.size() <= 64 &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 500)) &&
+        (!('signature' in data) || (data.signature is string && data.signature.size() <= 200000));
+    }
+
+    function isValidTransactionDoc(data) {
+      return data.keys().hasAll(['id', 'date', 'type', 'amount', 'description']) &&
+        data.keys().hasOnly(['id', 'date', 'type', 'amount', 'category', 'description', 'receiptImage']) &&
+        isValidId(data.id) &&
+        data.date is string && data.date.size() <= 32 &&
+        data.type in ['Pemasukan', 'Pengeluaran'] &&
+        data.amount is number && data.amount >= 0 &&
+        (!('category' in data) || (data.category is string && data.category.size() <= 80)) &&
+        data.description is string && data.description.size() >= 1 && data.description.size() <= 400 &&
+        (!('receiptImage' in data) || (data.receiptImage is string && data.receiptImage.size() <= 350000));
+    }
+
+    function isValidProkerItem(data) {
+      return data.keys().hasAll(['id', 'title', 'seksi', 'status', 'progress', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'title', 'seksi', 'penanggungJawab', 'periode', 'targetDate', 'budget', 'status', 'progress', 'description', 'documentationUrl', 'updatedAt']) &&
+        isValidId(data.id) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+        data.seksi is string && data.seksi.size() >= 1 && data.seksi.size() <= 120 &&
+        (!('penanggungJawab' in data) || (data.penanggungJawab is string && data.penanggungJawab.size() <= 120)) &&
+        (!('periode' in data) || (data.periode is string && data.periode.size() <= 64)) &&
+        (!('targetDate' in data) || (data.targetDate is string && data.targetDate.size() <= 64)) &&
+        (!('budget' in data) || (data.budget is number && data.budget >= 0)) &&
+        data.status in ['Direncanakan', 'Berjalan', 'Terlaksana'] &&
+        data.progress is number && data.progress >= 0 && data.progress <= 100 &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 1000)) &&
+        (!('documentationUrl' in data) || (data.documentationUrl is string && data.documentationUrl.size() <= 500)) &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidDanaSosialItem(data) {
+      return data.keys().hasAll(['id', 'type', 'category', 'recipientName', 'amount', 'date', 'status']) &&
+        data.keys().hasOnly(['id', 'type', 'category', 'recipientName', 'recipientSchool', 'amount', 'date', 'notes', 'status']) &&
+        isValidId(data.id) &&
+        data.type in ['Penggalangan', 'Penyaluran'] &&
+        data.category in ['Sakit / Rawat Inap', 'Duka Cita', 'Purna Tugas / Pensiun', 'Pernikahan / Kelahiran', 'Bencana / Lainnya'] &&
+        data.recipientName is string && data.recipientName.size() >= 1 && data.recipientName.size() <= 160 &&
+        (!('recipientSchool' in data) || (data.recipientSchool is string && data.recipientSchool.size() <= 160)) &&
+        data.amount is number && data.amount >= 0 &&
+        data.date is string && data.date.size() <= 32 &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 600)) &&
+        data.status in ['Terkumpul', 'Tersalurkan', 'Proses'];
+    }
+
+    function isValidAspirasiCreate(data) {
+      return data.keys().hasAll(['id', 'authorUid', 'senderName', 'category', 'subject', 'message', 'status', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'authorUid', 'senderName', 'senderSchool', 'senderPhone', 'isAnonymous', 'category', 'subject', 'message', 'status', 'response', 'createdAt']) &&
+        isValidId(data.id) &&
+        data.authorUid is string && data.authorUid == request.auth.uid && data.authorUid.size() <= 128 &&
+        data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 140 &&
+        (!('senderSchool' in data) || (data.senderSchool is string && data.senderSchool.size() <= 140)) &&
+        (!('senderPhone' in data) || (data.senderPhone is string && data.senderPhone.size() <= 40)) &&
+        (!('isAnonymous' in data) || data.isAnonymous is bool) &&
+        data.category in ['Aspirasi Organisasi', 'Advokasi / LKBH', 'Administrasi PPPK/PNS', 'Kesejahteraan & Tunjangan', 'Lainnya'] &&
+        data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 200 &&
+        data.message is string && data.message.size() >= 1 && data.message.size() <= 2000 &&
+        data.status == 'Diterima' &&
+        (!('response' in data) || (data.response is string && data.response.size() == 0)) &&
+        data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidAspirasiUpdate(data) {
+      return data.keys().hasAll(['id', 'authorUid', 'senderName', 'category', 'subject', 'message', 'status', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'authorUid', 'senderName', 'senderSchool', 'senderPhone', 'isAnonymous', 'category', 'subject', 'message', 'status', 'response', 'createdAt']) &&
+        data.id == existing().id &&
+        data.authorUid == existing().authorUid &&
+        data.createdAt == existing().createdAt &&
+        data.status in ['Diterima', 'Ditindaklanjuti', 'Selesai'] &&
+        (!('response' in data) || (data.response is string && data.response.size() <= 1500));
+    }
+
+    function isValidAspirasiRestore(data) {
+      return data.keys().hasAll(['id', 'authorUid', 'senderName', 'category', 'subject', 'message', 'status', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'authorUid', 'senderName', 'senderSchool', 'senderPhone', 'isAnonymous', 'category', 'subject', 'message', 'status', 'response', 'createdAt']) &&
+        isValidId(data.id) &&
+        data.authorUid is string && data.authorUid.size() >= 1 && data.authorUid.size() <= 128 &&
+        data.senderName is string && data.senderName.size() >= 1 && data.senderName.size() <= 140 &&
+        (!('senderSchool' in data) || (data.senderSchool is string && data.senderSchool.size() <= 140)) &&
+        (!('senderPhone' in data) || (data.senderPhone is string && data.senderPhone.size() <= 40)) &&
+        (!('isAnonymous' in data) || data.isAnonymous is bool) &&
+        data.category in ['Aspirasi Organisasi', 'Advokasi / LKBH', 'Administrasi PPPK/PNS', 'Kesejahteraan & Tunjangan', 'Lainnya'] &&
+        data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 200 &&
+        data.message is string && data.message.size() >= 1 && data.message.size() <= 2000 &&
+        data.status in ['Diterima', 'Ditindaklanjuti', 'Selesai'] &&
+        (!('response' in data) || (data.response is string && data.response.size() <= 1500)) &&
+        data.createdAt is string && data.createdAt.size() <= 64;
+    }
+
+    function isValidSuratAgenda(data) {
+      return data.keys().hasAll(['id', 'direction', 'nomorSurat', 'tanggalSurat', 'asalTujuan', 'perihal']) &&
+        data.keys().hasOnly(['id', 'direction', 'nomorSurat', 'tanggalSurat', 'asalTujuan', 'perihal', 'lampiranUrl', 'catatan']) &&
+        isValidId(data.id) &&
+        data.direction in ['Masuk', 'Keluar'] &&
+        data.nomorSurat is string && data.nomorSurat.size() >= 1 && data.nomorSurat.size() <= 120 &&
+        data.tanggalSurat is string && data.tanggalSurat.size() <= 32 &&
+        data.asalTujuan is string && data.asalTujuan.size() >= 1 && data.asalTujuan.size() <= 200 &&
+        data.perihal is string && data.perihal.size() >= 1 && data.perihal.size() <= 300 &&
+        (!('lampiranUrl' in data) || (data.lampiranUrl is string && data.lampiranUrl.size() <= 600)) &&
+        (!('catatan' in data) || (data.catatan is string && data.catatan.size() <= 500));
+    }
+
+    // =========================================================================
+    // COLLECTION RULES
+    // =========================================================================
+
+    // Existing synchronized collections (hardened: pengurus-only writes, verified member access)
+    match /kombel_data/{collectionId} {
+      allow get: if isValidId(collectionId) && (
+        collectionId in ['events', 'materials', 'announcements', 'forumPosts', 'webinars', 'proker', 'danaSosial', 'notulen', 'kontakFeedback'] ||
+        isPengurus() ||
+        isVerifiedUser()
+      );
+      allow list: if isPengurus();
+      allow create, update: if isValidId(collectionId) && isValidKombelData(incoming()) && (
+        isKetua() ||
+        (isSekretaris() && collectionId in ['teachers', 'events', 'attendanceList', 'materials', 'announcements', 'forumPosts', 'taskSubmissions', 'webinars', 'invitations', 'proker', 'danaSosial', 'suratAgenda', 'notulen', 'kontakFeedback']) ||
+        (isBendahara() && collectionId in ['financialTransactions', 'cashPayments', 'danaSosial']) ||
+        (isSeksi() && collectionId in ['events', 'announcements', 'materials', 'webinars', 'proker']) ||
+        (isVerifiedUser() && collectionId in ['attendanceList', 'forumPosts', 'taskSubmissions', 'kontakFeedback'])
+      );
+      allow delete: if isValidId(collectionId) && isKetua();
+    }
+
+    // Global settings, locked menus, & lightweight sync versions (read-only for app boot, validated writes)
+    match /settings/{docId} {
+      allow get: if isValidId(docId) && docId in ['global', 'locked-menus', 'versions'];
+      allow list: if isPengurus();
+      allow create, update: if isValidId(docId) && (
+        ((isKetua() || isSekretaris()) && (
+          (docId == 'global' && isValidGlobalSettings(incoming())) ||
+          (docId == 'locked-menus' && isValidLockedMenus(incoming()))
+        )) ||
+        (docId == 'global' && isBendahara() && isValidGlobalSettings(incoming()) && (
+          (resource == null && incoming().keys().hasOnly(['org-config', 'pgri-verified-pengurus-names'])) ||
+          (resource != null && incoming().diff(existing()).affectedKeys().hasOnly(['org-config', 'pgri-verified-pengurus-names']))
+        )) ||
+        (docId == 'versions' && (isVerifiedUser() || isPengurus()) && isValidSyncVersions(incoming()))
+      );
+      allow delete: if false;
+    }
+
+    // RBAC Pengurus role assignments (managed exclusively by Ketua / Super Admin)
+    match /pengurus_roles/{emailDocId} {
+      allow get: if isValidId(emailDocId) && isVerifiedUser() && (emailDocId == emailKey() || isKetua());
+      allow list: if isKetua();
+      allow create, update: if isValidId(emailDocId) && isKetua() && isValidPengurusRole(incoming());
+      allow delete: if isValidId(emailDocId) && isKetua();
+    }
+
+    // Immutable activity audit logs
+    match /audit_logs/{logId} {
+      allow get, list: if isPengurus();
+      allow create: if isValidId(logId) && isVerifiedUser() && isValidAuditLog(incoming());
+      allow update, delete: if false;
+    }
+
+    // Per-document attendance records (scalable concurrent QR check-in)
+    match /attendance_docs/{recordId} {
+      allow get: if isValidId(recordId) && isVerifiedUser();
+      allow list: if isPengurus();
+      allow create: if isValidId(recordId) && isVerifiedUser() && isValidAttendanceDoc(incoming());
+      allow update: if isValidId(recordId) && isPengurus() && isValidAttendanceDoc(incoming());
+      allow delete: if isValidId(recordId) && (isKetua() || isSekretaris());
+    }
+
+    // Per-document financial transactions
+    match /transaction_docs/{txId} {
+      allow get: if isValidId(txId) && isVerifiedUser();
+      allow list: if isPengurus();
+      allow create, update: if isValidId(txId) && (isKetua() || isBendahara()) && isValidTransactionDoc(incoming());
+      allow delete: if isValidId(txId) && (isKetua() || isBendahara());
+    }
+
+    // Program Kerja Tahunan per Seksi
+    match /proker_items/{prokerId} {
+      allow get: if isValidId(prokerId);
+      allow list: if isPengurus() || resource.data.status in ['Direncanakan', 'Berjalan', 'Terlaksana'];
+      allow create, update: if isValidId(prokerId) && isPengurus() && isValidProkerItem(incoming());
+      allow delete: if isValidId(prokerId) && (isKetua() || isSekretaris());
+    }
+
+    // Dana Sosial & Tali Asih
+    match /dana_sosial/{itemId} {
+      allow get: if isValidId(itemId);
+      allow list: if isPengurus() || resource.data.status in ['Terkumpul', 'Tersalurkan', 'Proses'];
+      allow create, update: if isValidId(itemId) && (isKetua() || isBendahara() || isSekretaris()) && isValidDanaSosialItem(incoming());
+      allow delete: if isValidId(itemId) && (isKetua() || isBendahara());
+    }
+
+    // Kotak Aspirasi & Advokasi LKBH (Strictly confidential: author + Ketua/Sekretaris only)
+    match /aspirasi_items/{aspirasiId} {
+      allow get: if isValidId(aspirasiId) && isVerifiedUser() && (
+        resource.data.authorUid == request.auth.uid || isKetua() || isSekretaris()
+      );
+      allow list: if isVerifiedUser() && (
+        resource.data.authorUid == request.auth.uid || isKetua() || isSekretaris()
+      );
+      allow create: if isValidId(aspirasiId) && (
+        (isVerifiedUser() && isValidAspirasiCreate(incoming())) ||
+        (isKetua() && isValidAspirasiRestore(incoming()))
+      );
+      allow update: if isValidId(aspirasiId) && (
+        ((isKetua() || isSekretaris()) && isValidAspirasiUpdate(incoming()) &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'response'])) ||
+        (isKetua() && isValidAspirasiRestore(incoming()))
+      );
+      allow delete: if isValidId(aspirasiId) && isKetua();
+    }
+
+    // Buku Agenda Surat Masuk & Keluar
+    match /surat_agenda/{suratId} {
+      allow get, list: if isPengurus();
+      allow create, update: if isValidId(suratId) && (isKetua() || isSekretaris()) && isValidSuratAgenda(incoming());
+      allow delete: if isValidId(suratId) && (isKetua() || isSekretaris());
+    }
+  }
+}

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+<div id="test">Test</div>
+<script>
+window.onload = () => {
+    try {
+        const worker = html2pdf().from(document.getElementById('test'));
+        console.log(Object.keys(worker));
+        console.log("has output:", typeof worker.output === 'function');
+        console.log("has outputPdf:", typeof worker.outputPdf === 'function');
+    } catch(e) {
+        console.error(e);
+    }
+}
+</script>
+</body>
+</html>
